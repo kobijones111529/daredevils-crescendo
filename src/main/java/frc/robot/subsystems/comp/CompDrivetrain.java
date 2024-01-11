@@ -1,7 +1,7 @@
 package frc.robot.subsystems.comp;
 
-import com.ctre.phoenix.motorcontrol.ControlMode;
-import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
+import com.revrobotics.CANSparkLowLevel;
+import com.revrobotics.CANSparkMax;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.units.BaseUnits;
@@ -47,8 +47,8 @@ public class CompDrivetrain extends SubsystemBase implements SimpleDifferentialD
   }
 
   private record DriveGroup(
-    WPI_TalonSRX primary,
-    List<WPI_TalonSRX> backups,
+    CANSparkMax primary,
+    List<CANSparkMax> backups,
     Encoder encoder
   ) {}
 
@@ -69,8 +69,8 @@ public class CompDrivetrain extends SubsystemBase implements SimpleDifferentialD
     );
 
     try (
-      var leftPrimary = new WPI_TalonSRX(config.driveLeft.primaryID);
-      var rightPrimary = new WPI_TalonSRX(config.driveRight.primaryID);
+      var leftPrimary = new CANSparkMax(config.driveLeft.primaryID, CANSparkLowLevel.MotorType.kBrushless);
+      var rightPrimary = new CANSparkMax(config.driveRight.primaryID, CANSparkLowLevel.MotorType.kBrushless);
       var leftEncoder = new Encoder(
         config.driveLeft.encoder.channelA,
         config.driveLeft.encoder.channelB,
@@ -96,8 +96,8 @@ public class CompDrivetrain extends SubsystemBase implements SimpleDifferentialD
     }
   }
 
-  private WPI_TalonSRX createDriveBackup(WPI_TalonSRX primary, int id) {
-    try (var backup = new WPI_TalonSRX(id)) {
+  private CANSparkMax createDriveBackup(CANSparkMax primary, int id) {
+    try (var backup = new CANSparkMax(id, CANSparkLowLevel.MotorType.kBrushless)) {
       backup.follow(primary);
       return backup;
     }
@@ -109,18 +109,18 @@ public class CompDrivetrain extends SubsystemBase implements SimpleDifferentialD
 
     switch (driveControlMode) {
       case DriveControlMode.Stop ignore -> {
-        driveLeft.primary.set(ControlMode.Disabled, 0);
-        driveRight.primary.set(ControlMode.Disabled, 0);
+        driveLeft.primary.set(0);
+        driveRight.primary.set(0);
       }
       case DriveControlMode.Tank tank -> {
         var wheelSpeeds = DifferentialDrive.tankDriveIK(tank.left, tank.right, false);
-        driveLeft.primary.set(ControlMode.PercentOutput, wheelSpeeds.left);
-        driveRight.primary.set(ControlMode.PercentOutput, wheelSpeeds.right);
+        driveLeft.primary.set(wheelSpeeds.left);
+        driveRight.primary.set(wheelSpeeds.right);
       }
       case DriveControlMode.Arcade arcade -> {
         var wheelSpeeds = DifferentialDrive.arcadeDriveIK(arcade.move, arcade.turn, false);
-        driveLeft.primary.set(ControlMode.PercentOutput, wheelSpeeds.left);
-        driveRight.primary.set(ControlMode.PercentOutput, wheelSpeeds.right);
+        driveLeft.primary.set(wheelSpeeds.left);
+        driveRight.primary.set(wheelSpeeds.right);
       }
     }
   }

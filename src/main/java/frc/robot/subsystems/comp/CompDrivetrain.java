@@ -2,6 +2,7 @@ package frc.robot.subsystems.comp;
 
 import com.revrobotics.CANSparkLowLevel;
 import com.revrobotics.CANSparkMax;
+import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.units.BaseUnits;
@@ -20,6 +21,7 @@ import java.util.stream.IntStream;
 public class CompDrivetrain extends SubsystemBase implements SimpleDifferentialDrive, EncoderDifferentialDrive {
 
   public record Config(
+    double driveRateLimit,
     DriveGroup driveLeft,
     DriveGroup driveRight
   ) {
@@ -49,7 +51,8 @@ public class CompDrivetrain extends SubsystemBase implements SimpleDifferentialD
   private record DriveGroup(
     CANSparkMax primary,
     List<CANSparkMax> backups,
-    Encoder encoder
+    Encoder encoder,
+    SlewRateLimiter rateLimiter
   ) {}
 
   private record NetworkTableEntries(
@@ -91,8 +94,18 @@ public class CompDrivetrain extends SubsystemBase implements SimpleDifferentialD
       leftEncoder.setDistancePerPulse(config.driveLeft.encoder.distancePerPulse.baseUnitMagnitude());
       rightEncoder.setDistancePerPulse(config.driveRight.encoder.distancePerPulse.baseUnitMagnitude());
 
-      driveLeft = new DriveGroup(leftPrimary, leftBackups, leftEncoder);
-      driveRight = new DriveGroup(rightPrimary, rightBackups, rightEncoder);
+      driveLeft = new DriveGroup(
+        leftPrimary,
+        leftBackups,
+        leftEncoder,
+        new SlewRateLimiter(config.driveRateLimit)
+      );
+      driveRight = new DriveGroup(
+        rightPrimary,
+        rightBackups,
+        rightEncoder,
+        new SlewRateLimiter(config.driveRateLimit)
+      );
     }
   }
 
@@ -109,18 +122,24 @@ public class CompDrivetrain extends SubsystemBase implements SimpleDifferentialD
 
     switch (driveControlMode) {
       case DriveControlMode.Stop ignore -> {
-        driveLeft.primary.set(0);
-        driveRight.primary.set(0);
+        double left = driveLeft.rateLimiter.calculate(0);
+        double right = driveRight.rateLimiter.calculate(0);
+        driveLeft.primary.set(left);
+        driveRight.primary.set(right);
       }
       case DriveControlMode.Tank tank -> {
         var wheelSpeeds = DifferentialDrive.tankDriveIK(tank.left, tank.right, false);
-        driveLeft.primary.set(wheelSpeeds.left);
-        driveRight.primary.set(wheelSpeeds.right);
+        double left = driveLeft.rateLimiter.calculate(wheelSpeeds.left);
+        double right = driveRight.rateLimiter.calculate(wheelSpeeds.right);
+        driveLeft.primary.set(left);
+        driveRight.primary.set(right);
       }
       case DriveControlMode.Arcade arcade -> {
         var wheelSpeeds = DifferentialDrive.arcadeDriveIK(arcade.move, arcade.turn, false);
-        driveLeft.primary.set(wheelSpeeds.left);
-        driveRight.primary.set(wheelSpeeds.right);
+        double left = driveLeft.rateLimiter.calculate(wheelSpeeds.left);
+        double right = driveRight.rateLimiter.calculate(wheelSpeeds.right);
+        driveLeft.primary.set(left);
+        driveRight.primary.set(right);
       }
     }
   }

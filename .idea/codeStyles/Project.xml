@@ -1,5 +1,8 @@
 <component name="ProjectCodeStyleConfiguration">
   <code_scheme name="Project" version="173">
+    <ScalaCodeStyleSettings>
+      <option name="FORMATTER" value="1" />
+    </ScalaCodeStyleSettings>
     <codeStyleSettings language="JAVA">
       <option name="KEEP_SIMPLE_BLOCKS_IN_ONE_LINE" value="true" />
       <option name="KEEP_SIMPLE_METHODS_IN_ONE_LINE" value="true" />
@@ -11,8 +14,5 @@
         <option name="TAB_SIZE" value="2" />
       </indentOptions>
     </codeStyleSettings>
-    <ScalaCodeStyleSettings>
-      <option name="FORMATTER" value="1" />
-    </ScalaCodeStyleSettings>
   </code_scheme>
 </component>

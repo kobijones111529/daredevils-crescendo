@@ -1,6 +1,8 @@
 package frc.robot.scala.robot.subsystems
 
-trait SimpleDifferentialDrive[A]:
-  extension (a: A) def stop(): Unit
-  extension (a: A) def tankDrive(left: Double, right: Double): Unit
-  extension (a: A) def arcadeDrive(move: Double, turn: Double): Unit
+import scala.annotation.unused
+
+trait SimpleDifferentialDrive[Drivetrain]:
+  extension (@unused drivetrain: Drivetrain) def stop(): Unit
+  extension (@unused drivetrain: Drivetrain) def tankDrive(left: Double, right: Double): Unit
+  extension (@unused drivetrain: Drivetrain) def arcadeDrive(move: Double, turn: Double): Unit

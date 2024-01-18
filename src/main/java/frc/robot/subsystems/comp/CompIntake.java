@@ -1,11 +1,9 @@
 package frc.robot.subsystems.comp;
 
 import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
-import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.units.*;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.Encoder;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.Intake;
 
@@ -37,16 +35,16 @@ public class CompIntake extends SubsystemBase implements Intake {
       @SuppressWarnings("unchecked")
       var acc = (Measure<Mult<Err, Time>>) error.times(BaseUnits.Time.zero());
       var rate = lastMeasure.map(last -> {
-        var errDiff = error.minus(last.err);
-        var timeDiff = time.minus(last.time);
+          var errDiff = error.minus(last.err);
+          var timeDiff = time.minus(last.time);
 
-        // Divide by zero
-        if (timeDiff.isEquivalent(BaseUnits.Time.zero())) {
-          return errDiff.times(0).per(BaseUnits.Time);
-        }
+          // Divide by zero
+          if (timeDiff.isEquivalent(BaseUnits.Time.zero())) {
+            return errDiff.times(0).per(BaseUnits.Time);
+          }
 
-        return errDiff.per(timeDiff);
-      })
+          return errDiff.per(timeDiff);
+        })
         .orElse(error.times(0).per(BaseUnits.Time));
 
       @SuppressWarnings("unchecked")
@@ -66,26 +64,36 @@ public class CompIntake extends SubsystemBase implements Intake {
 
   public record Config(
     Intake intake,
-    Actuate actuate
+    Actuator actuator
   ) {
     public record Intake(
       int primaryID
     ) {}
 
-    public record Actuate(
+    public record Actuator(
       int primaryID,
-      Sensors sensors
+      Type type
     ) {
-      public sealed interface Sensors {
-        record HasLimitSwitches(LimitSwitch up, LimitSwitch down) implements Sensors {}
+      public sealed interface Type {}
 
-        record HasEncoder(
-          Encoder encoder,
-          Optional<LimitSwitch> upLimitSwitch,
-          Optional<LimitSwitch> downLimitSwitch,
-          Measure<Angle> downPosition
-        ) implements Sensors {}
+      record Basic(Sensors sensors) implements Type {
+        public sealed interface Sensors {
+          record None() implements Sensors {}
+
+          record Top(LimitSwitch limitSwitch) implements Sensors {}
+
+          record Bottom(LimitSwitch limitSwitch) implements Sensors {}
+        }
       }
+
+      record WithLimitSwitches(LimitSwitch up, LimitSwitch down) implements Type {}
+
+      record WithEncoder(
+        Encoder encoder,
+        Optional<LimitSwitch> upLimitSwitch,
+        Optional<LimitSwitch> downLimitSwitch,
+        Measure<Angle> downPosition
+      ) implements Type {}
 
       record Encoder(
         int channelA,
@@ -97,142 +105,189 @@ public class CompIntake extends SubsystemBase implements Intake {
     }
   }
 
-  private record IntakeGroup(
+  private record Intake(
     WPI_VictorSPX primary
   ) {}
 
   private record Actuator(
-
+    Motors motors,
+    Type type
   ) {
-    public sealed interface HasAuto {
-      void set(Actuate.Position position);
-    }
-
     public sealed interface Type {}
 
-    record Basic() implements Type {}
-    public static final class WithLimitSwitches implements Type, HasAuto {
-      record Sensors(
-        DigitalInput up,
-        DigitalInput down
-      ) {}
+    static final class Basic implements Type {
+      public sealed interface Sensors {
+        record None() implements Sensors {}
 
-      private final Sensors sensors;
-      private Actuate.Position position;
+        record Top(DigitalInput limitSwitch) implements Sensors {}
 
-      public WithLimitSwitches(Sensors sensors, Actuate.Position position) {
-        this.sensors = sensors;
-        this.position = position;
+        record Bottom(DigitalInput limitSwitch) implements Sensors {}
       }
 
-      @Override
-      public void set(Actuate.Position position) {
-        this.position = position;
+      public final Sensors sensors;
+      public double speed;
+
+      public Basic(Sensors sensors) {
+        this(sensors, 0);
+      }
+
+      public Basic(Sensors sensors, double speed) {
+        this.sensors = sensors;
+        this.speed = speed;
       }
     }
-    record WithEncoder() implements Type {}
+
+    public static final class WithLimitSwitches implements Type {
+      record Sensors(
+        DigitalInput top,
+        DigitalInput bottom
+      ) {}
+
+      public sealed interface Control {
+        record Manual(double speed) implements Control {}
+
+        record Auto(Actuate.Position position) implements Control {}
+      }
+
+      public final Sensors sensors;
+      public Control control;
+
+      public WithLimitSwitches(Sensors sensors, Control control) {
+        this.sensors = sensors;
+        this.control = control;
+      }
+    }
+
+    public static final class WithEncoder implements Type {
+      record Sensors(
+        Encoder encoder,
+        Optional<DigitalInput> top,
+        Optional<DigitalInput> bottom
+      ) {}
+
+      public sealed interface Control {
+        record Manual(double speed) implements Control {}
+
+        record Auto(Actuate.Position position) implements Control {}
+      }
+
+      public final Sensors sensors;
+      public Control control;
+
+      public WithEncoder(Sensors sensors, Control control) {
+        this.sensors = sensors;
+        this.control = control;
+      }
+    }
 
     record Motors(WPI_VictorSPX primary) {}
   }
 
-  private record ActuateGroup(
-    WPI_VictorSPX primary,
-    Sensors sensors
-  ) {
-    public sealed interface HasControl<T> {
-      void set(T control);
-    }
-
-    public sealed interface Sensors {
-      record None() implements Sensors, HasControl<None.Control> {
-        record Control(double output) {}
-      }
-
-      record HasLimitSwitches(DigitalInput up, DigitalInput down) implements Sensors {}
-
-      record HasEncoder(
-        Encoder encoder,
-        Optional<DigitalInput> upLimitSwitch,
-        Optional<DigitalInput> downLimitSwitch,
-        Measure<Angle> downPosition,
-        PIDCon<Angle, Dimensionless> pidController
-      ) implements Sensors {}
-    }
-  }
-
-  private final IntakeGroup intake;
-  private final ActuateGroup actuate;
+  private final Intake intake;
+  private final Actuator actuator;
 
   private Actuate.Position position = Actuate.Position.Up;
 
   public CompIntake(Config config) {
-    try (
-      var intakePrimary = new WPI_VictorSPX(config.intake.primaryID);
-      var actuatePrimary = new WPI_VictorSPX(config.actuate.primaryID);
-    ) {
-      ActuateGroup.Sensors sensors = switch (config.actuate.sensors) {
-        case Config.Actuate.Sensors.HasLimitSwitches hasLimitSwitches ->
-          new ActuateGroup.Sensors.HasLimitSwitches(
-            new DigitalInput(hasLimitSwitches.up.channel),
-            new DigitalInput(hasLimitSwitches.down.channel)
-          );
-        case Config.Actuate.Sensors.HasEncoder hasEncoder ->
-          new ActuateGroup.Sensors.HasEncoder(
-            new Encoder(hasEncoder.encoder.channelA, hasEncoder.encoder.channelB),
-            hasEncoder.upLimitSwitch.map((limitSwitch) -> new DigitalInput(limitSwitch.channel)),
-            hasEncoder.downLimitSwitch.map((limitSwitch -> new DigitalInput(limitSwitch.channel))),
-            hasEncoder.downPosition,
-            new PIDCon<>(
-              new PID<>(
-                Units.Value.of(1).per(Units.Degrees),
-                Units.Value.of(0).per(Mult.combine(Units.Degrees, Units.Seconds)),
-                Units.Value.of(0).per(Per.combine(Units.Degrees, Units.Seconds))
-              )
-            )
-          );
-      };
+    Actuator.Type type = switch (config.actuator.type) {
+      case Config.Actuator.Basic basic -> createActuatorBasic(basic);
+      case Config.Actuator.WithLimitSwitches withLimitSwitches -> createActuatorWithLimitSwitches(withLimitSwitches);
+      case Config.Actuator.WithEncoder withEncoder -> createActuatorWithEncoder(withEncoder);
+    };
 
-      intake = new IntakeGroup(intakePrimary);
-      actuate = new ActuateGroup(actuatePrimary, sensors);
-    }
+    intake = new Intake(new WPI_VictorSPX(config.intake.primaryID));
+    actuator = new Actuator(new Actuator.Motors(new WPI_VictorSPX(config.actuator.primaryID)), type);
+  }
+
+  private Actuator.Basic createActuatorBasic(Config.Actuator.Basic config) {
+    var sensors = switch (config.sensors) {
+      case Config.Actuator.Basic.Sensors.None ignore -> new Actuator.Basic.Sensors.None();
+      case Config.Actuator.Basic.Sensors.Top top -> {
+        var limitSwitch = new DigitalInput(top.limitSwitch.channel);
+        yield new Actuator.Basic.Sensors.Top(limitSwitch);
+      }
+      case Config.Actuator.Basic.Sensors.Bottom bottom -> {
+        var limitSwitch = new DigitalInput(bottom.limitSwitch.channel);
+        yield new Actuator.Basic.Sensors.Bottom(limitSwitch);
+      }
+    };
+    return new Actuator.Basic(sensors, 0);
+  }
+
+  private Actuator.WithLimitSwitches createActuatorWithLimitSwitches(Config.Actuator.WithLimitSwitches config) {
+    var top = new DigitalInput(config.up.channel);
+    var bottom = new DigitalInput(config.down.channel);
+    var sensors = new Actuator.WithLimitSwitches.Sensors(top, bottom);
+    return new Actuator.WithLimitSwitches(sensors, new Actuator.WithLimitSwitches.Control.Manual(0));
+  }
+
+  private Actuator.WithEncoder createActuatorWithEncoder(Config.Actuator.WithEncoder config) {
+    var encoder = new Encoder(config.encoder.channelA, config.encoder.channelB);
+    encoder.setDistancePerPulse(config.encoder.distancePerPulse.baseUnitMagnitude());
+
+    var top = config.upLimitSwitch.map(limitSwitch -> new DigitalInput(limitSwitch.channel));
+    var bottom = config.downLimitSwitch.map(limitSwitch -> new DigitalInput(limitSwitch.channel));
+    var sensors = new Actuator.WithEncoder.Sensors(encoder, top, bottom);
+    return new Actuator.WithEncoder(sensors, new Actuator.WithEncoder.Control.Manual(0));
   }
 
   @Override
   public void periodic() {
-    switch (actuate.sensors) {
-      case ActuateGroup.Sensors.None ignore -> {
-
+    switch (actuator.type) {
+      case Actuator.Basic basic -> {
+        double speed = actuateSpeed(basic);
+        actuator.motors.primary.set(speed);
       }
-      case ActuateGroup.Sensors.HasLimitSwitches hasLimitSwitches -> {
-        switch (position) {
-          case Up -> {
-            double speed = hasLimitSwitches.up.get() ? 0 : -1;
-            actuate.primary.set(speed);
-          }
-          case Down -> {
-            double speed = hasLimitSwitches.down.get() ? 0 : 1;
-            actuate.primary.set(speed);
-          }
-        }
+      case Actuator.WithLimitSwitches withLimitSwitches -> {
+        double speed = actuateSpeed(withLimitSwitches);
+        actuator.motors.primary.set(speed);
       }
-      case ActuateGroup.Sensors.HasEncoder hasEncoder -> {
-        // Reset encoder if top limit switch is engaged
-        if (hasEncoder.upLimitSwitch.map(DigitalInput::get).orElse(false)) {
-          hasEncoder.encoder.reset();
-        }
-
-        var target = switch (position) {
-          case Up -> Units.Degrees.zero();
-          case Down -> hasEncoder.downPosition;
-        };
-        var current = BaseUnits.Angle.of(hasEncoder.encoder.get());
-        var error = current.minus(target);
-        var time = Units.Seconds.of(Timer.getFPGATimestamp());
-        var output = hasEncoder.pidController.update(error, time).in(Units.Value);
-
-        actuate.primary.set(output);
+      case Actuator.WithEncoder withEncoder -> {
+        // TODO
       }
     }
+  }
+
+  private double actuateSpeed(Actuator.Basic basic) {
+    double desiredSpeed = basic.speed;
+
+    return switch (basic.sensors) {
+      case Actuator.Basic.Sensors.None ignored -> desiredSpeed;
+      case Actuator.Basic.Sensors.Top top -> {
+        if (top.limitSwitch.get())
+          yield Math.max(0, desiredSpeed);
+        else
+          yield desiredSpeed;
+      }
+      case Actuator.Basic.Sensors.Bottom bottom -> {
+        if (bottom.limitSwitch.get())
+          yield Math.min(desiredSpeed, 0);
+        else
+          yield desiredSpeed;
+      }
+    };
+  }
+
+  private double actuateSpeed(Actuator.WithLimitSwitches withLimitSwitches) {
+    var sensors = withLimitSwitches.sensors;
+
+    return switch (withLimitSwitches.control) {
+      case Actuator.WithLimitSwitches.Control.Manual manual -> {
+        double speed = manual.speed;
+
+        if (sensors.top.get())
+          speed = Math.max(0, speed);
+
+        if (sensors.bottom.get())
+          speed = Math.min(speed, 0);
+
+        yield speed;
+      }
+      case Actuator.WithLimitSwitches.Control.Auto auto -> switch (auto.position) {
+        case Up -> sensors.top.get() ? 0 : -1;
+        case Down -> sensors.bottom.get() ? 0 : 1;
+      };
+    };
   }
 
   @Override

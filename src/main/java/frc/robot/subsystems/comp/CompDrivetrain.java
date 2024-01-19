@@ -12,13 +12,14 @@ import edu.wpi.first.units.Velocity;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.EncoderDifferentialDrive;
 import frc.robot.subsystems.SimpleDifferentialDrive;
 
 import java.util.List;
 import java.util.stream.IntStream;
 
-public class CompDrivetrain extends SubsystemBase implements SimpleDifferentialDrive, EncoderDifferentialDrive {
+public class CompDrivetrain extends SubsystemBase implements Drivetrain {
 
   public record Config(
     double driveRateLimit,
@@ -71,49 +72,46 @@ public class CompDrivetrain extends SubsystemBase implements SimpleDifferentialD
       networkTable.getEntry("Control mode")
     );
 
-    try (
-      var leftPrimary = new CANSparkMax(config.driveLeft.primaryID, CANSparkLowLevel.MotorType.kBrushless);
-      var rightPrimary = new CANSparkMax(config.driveRight.primaryID, CANSparkLowLevel.MotorType.kBrushless);
-      var leftEncoder = new Encoder(
-        config.driveLeft.encoder.channelA,
-        config.driveLeft.encoder.channelB,
-        config.driveLeft.encoder.reversed
-      );
-      var rightEncoder = new Encoder(
-        config.driveRight.encoder.channelA,
-        config.driveRight.encoder.channelB,
-        config.driveRight.encoder.reversed
-      )
-    ) {
-      leftPrimary.setInverted(config.driveLeft.inverted);
-      rightPrimary.setInverted(config.driveRight.inverted);
+    var leftPrimary = new CANSparkMax(config.driveLeft.primaryID, CANSparkLowLevel.MotorType.kBrushless);
+    var rightPrimary = new CANSparkMax(config.driveRight.primaryID, CANSparkLowLevel.MotorType.kBrushless);
+    var leftEncoder = new Encoder(
+      config.driveLeft.encoder.channelA,
+      config.driveLeft.encoder.channelB,
+      config.driveLeft.encoder.reversed
+    );
+    var rightEncoder = new Encoder(
+      config.driveRight.encoder.channelA,
+      config.driveRight.encoder.channelB,
+      config.driveRight.encoder.reversed
+    );
 
-      var leftBackups = config.driveLeft.backupIDs.mapToObj((id) -> createDriveBackup(leftPrimary, id)).toList();
-      var rightBackups = config.driveRight.backupIDs.mapToObj((id) -> createDriveBackup(rightPrimary, id)).toList();
+    leftPrimary.setInverted(config.driveLeft.inverted);
+    rightPrimary.setInverted(config.driveRight.inverted);
 
-      leftEncoder.setDistancePerPulse(config.driveLeft.encoder.distancePerPulse.baseUnitMagnitude());
-      rightEncoder.setDistancePerPulse(config.driveRight.encoder.distancePerPulse.baseUnitMagnitude());
+    var leftBackups = config.driveLeft.backupIDs.mapToObj((id) -> createDriveBackup(leftPrimary, id)).toList();
+    var rightBackups = config.driveRight.backupIDs.mapToObj((id) -> createDriveBackup(rightPrimary, id)).toList();
 
-      driveLeft = new DriveGroup(
-        leftPrimary,
-        leftBackups,
-        leftEncoder,
-        new SlewRateLimiter(config.driveRateLimit)
-      );
-      driveRight = new DriveGroup(
-        rightPrimary,
-        rightBackups,
-        rightEncoder,
-        new SlewRateLimiter(config.driveRateLimit)
-      );
-    }
+    leftEncoder.setDistancePerPulse(config.driveLeft.encoder.distancePerPulse.baseUnitMagnitude());
+    rightEncoder.setDistancePerPulse(config.driveRight.encoder.distancePerPulse.baseUnitMagnitude());
+
+    driveLeft = new DriveGroup(
+      leftPrimary,
+      leftBackups,
+      leftEncoder,
+      new SlewRateLimiter(config.driveRateLimit)
+    );
+    driveRight = new DriveGroup(
+      rightPrimary,
+      rightBackups,
+      rightEncoder,
+      new SlewRateLimiter(config.driveRateLimit)
+    );
   }
 
   private CANSparkMax createDriveBackup(CANSparkMax primary, int id) {
-    try (var backup = new CANSparkMax(id, CANSparkLowLevel.MotorType.kBrushless)) {
-      backup.follow(primary);
-      return backup;
-    }
+    var backup = new CANSparkMax(id, CANSparkLowLevel.MotorType.kBrushless);
+    backup.follow(primary);
+    return backup;
   }
 
   @Override

@@ -9,8 +9,6 @@ import edu.wpi.first.units.Velocity;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.Drivetrain;
-import frc.robot.subsystems.EncoderDifferentialDrive;
-import frc.robot.subsystems.SimpleDifferentialDrive;
 
 public class MockDrivetrain extends SubsystemBase implements Drivetrain {
 
@@ -46,17 +44,18 @@ public class MockDrivetrain extends SubsystemBase implements Drivetrain {
   public void periodic() {
     logControlMode(driveControlMode);
 
-    var driveOutput = switch (driveControlMode) {
-      case DriveControlMode.Stop ignore -> new DriveOutput.Stop();
-      case DriveControlMode.TankDrive output -> {
-        var wheelSpeeds = DifferentialDrive.tankDriveIK(output.left, output.right, false);
-        yield new DriveOutput.Percent(wheelSpeeds.left, wheelSpeeds.right);
-      }
-      case DriveControlMode.ArcadeDrive output -> {
-        var wheelSpeeds = DifferentialDrive.arcadeDriveIK(output.move, output.turn, false);
-        yield new DriveOutput.Percent(wheelSpeeds.left, wheelSpeeds.right);
-      }
-    };
+    var driveOutput =
+        switch (driveControlMode) {
+          case DriveControlMode.Stop ignore -> new DriveOutput.Stop();
+          case DriveControlMode.TankDrive output -> {
+            var wheelSpeeds = DifferentialDrive.tankDriveIK(output.left, output.right, false);
+            yield new DriveOutput.Percent(wheelSpeeds.left, wheelSpeeds.right);
+          }
+          case DriveControlMode.ArcadeDrive output -> {
+            var wheelSpeeds = DifferentialDrive.arcadeDriveIK(output.move, output.turn, false);
+            yield new DriveOutput.Percent(wheelSpeeds.left, wheelSpeeds.right);
+          }
+        };
 
     logDriveOutput(driveOutput);
   }

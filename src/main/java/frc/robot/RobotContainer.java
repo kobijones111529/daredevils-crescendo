@@ -21,26 +21,27 @@ import frc.robot.subsystems.mock.MockDrivetrain;
  * subsystems, commands, and trigger mappings) should be declared here.
  */
 public class RobotContainer {
-  private final Drivetrain drivetrain = switch (Config.drivetrain) {
-    case Config.Drivetrain.Comp comp -> new CompDrivetrain(
-      comp.config(),
-      NetworkTableInstance.getDefault().getTable("Drivetrain (Competition)")
-    );
-    case Config.Drivetrain.Mock ignore -> new MockDrivetrain(
-      NetworkTableInstance.getDefault().getTable("Drivetrain (Mock)")
-    );
-  };
+  private final Drivetrain drivetrain =
+      switch (Config.drivetrain) {
+        case Config.Drivetrain.Comp comp ->
+            new CompDrivetrain(
+                comp.config(),
+                NetworkTableInstance.getDefault().getTable("Drivetrain (Competition)"));
+        case Config.Drivetrain.Mock ignore ->
+            new MockDrivetrain(NetworkTableInstance.getDefault().getTable("Drivetrain (Mock)"));
+      };
 
   private final CommandXboxController driverController =
-    new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
+      new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
 
-  enum Auto {Auto1, Auto2}
+  enum Auto {
+    Auto1,
+    Auto2
+  }
 
   private final SendableChooser<Auto> autoChooser = new SendableChooser<>();
 
-  /**
-   * The container for the robot. Contains subsystems, OI devices, and commands.
-   */
+  /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
     autoChooser.setDefaultOption("Auto 1", Auto.Auto1);
     autoChooser.addOption("Auto 2", Auto.Auto2);
@@ -61,8 +62,8 @@ public class RobotContainer {
    */
   private void configureBindings() {
     drivetrain.setDefaultCommand(
-      DriveCommands.arcadeDrive(drivetrain, driverController::getLeftY, driverController::getRightX)
-    );
+        DriveCommands.arcadeDrive(
+            drivetrain, driverController::getLeftY, driverController::getRightX));
   }
 
   /**

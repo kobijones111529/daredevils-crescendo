@@ -13,31 +13,16 @@ import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.Drivetrain;
-import frc.robot.subsystems.EncoderDifferentialDrive;
-import frc.robot.subsystems.SimpleDifferentialDrive;
-
 import java.util.List;
 import java.util.stream.IntStream;
 
 public class CompDrivetrain extends SubsystemBase implements Drivetrain {
 
-  public record Config(
-    double driveRateLimit,
-    DriveGroup driveLeft,
-    DriveGroup driveRight
-  ) {
+  public record Config(double driveRateLimit, DriveGroup driveLeft, DriveGroup driveRight) {
     public record DriveGroup(
-      boolean inverted,
-      int primaryID,
-      IntStream backupIDs,
-      Encoder encoder
-    ) {
+        boolean inverted, int primaryID, IntStream backupIDs, Encoder encoder) {
       public record Encoder(
-        int channelA,
-        int channelB,
-        boolean reversed,
-        Measure<Distance> distancePerPulse
-      ) {}
+          int channelA, int channelB, boolean reversed, Measure<Distance> distancePerPulse) {}
     }
   }
 
@@ -50,15 +35,12 @@ public class CompDrivetrain extends SubsystemBase implements Drivetrain {
   }
 
   private record DriveGroup(
-    CANSparkMax primary,
-    List<CANSparkMax> backups,
-    Encoder encoder,
-    SlewRateLimiter rateLimiter
-  ) {}
+      CANSparkMax primary,
+      List<CANSparkMax> backups,
+      Encoder encoder,
+      SlewRateLimiter rateLimiter) {}
 
-  private record NetworkTableEntries(
-    NetworkTableEntry controlMode
-  ) {}
+  private record NetworkTableEntries(NetworkTableEntry controlMode) {}
 
   private final NetworkTableEntries networkTableEntries;
 
@@ -68,44 +50,41 @@ public class CompDrivetrain extends SubsystemBase implements Drivetrain {
   private DriveControlMode driveControlMode = new DriveControlMode.Stop();
 
   public CompDrivetrain(Config config, NetworkTable networkTable) {
-    networkTableEntries = new NetworkTableEntries(
-      networkTable.getEntry("Control mode")
-    );
+    networkTableEntries = new NetworkTableEntries(networkTable.getEntry("Control mode"));
 
-    var leftPrimary = new CANSparkMax(config.driveLeft.primaryID, CANSparkLowLevel.MotorType.kBrushless);
-    var rightPrimary = new CANSparkMax(config.driveRight.primaryID, CANSparkLowLevel.MotorType.kBrushless);
-    var leftEncoder = new Encoder(
-      config.driveLeft.encoder.channelA,
-      config.driveLeft.encoder.channelB,
-      config.driveLeft.encoder.reversed
-    );
-    var rightEncoder = new Encoder(
-      config.driveRight.encoder.channelA,
-      config.driveRight.encoder.channelB,
-      config.driveRight.encoder.reversed
-    );
+    var leftPrimary =
+        new CANSparkMax(config.driveLeft.primaryID, CANSparkLowLevel.MotorType.kBrushless);
+    var rightPrimary =
+        new CANSparkMax(config.driveRight.primaryID, CANSparkLowLevel.MotorType.kBrushless);
+    var leftEncoder =
+        new Encoder(
+            config.driveLeft.encoder.channelA,
+            config.driveLeft.encoder.channelB,
+            config.driveLeft.encoder.reversed);
+    var rightEncoder =
+        new Encoder(
+            config.driveRight.encoder.channelA,
+            config.driveRight.encoder.channelB,
+            config.driveRight.encoder.reversed);
 
     leftPrimary.setInverted(config.driveLeft.inverted);
     rightPrimary.setInverted(config.driveRight.inverted);
 
-    var leftBackups = config.driveLeft.backupIDs.mapToObj((id) -> createDriveBackup(leftPrimary, id)).toList();
-    var rightBackups = config.driveRight.backupIDs.mapToObj((id) -> createDriveBackup(rightPrimary, id)).toList();
+    var leftBackups =
+        config.driveLeft.backupIDs.mapToObj((id) -> createDriveBackup(leftPrimary, id)).toList();
+    var rightBackups =
+        config.driveRight.backupIDs.mapToObj((id) -> createDriveBackup(rightPrimary, id)).toList();
 
     leftEncoder.setDistancePerPulse(config.driveLeft.encoder.distancePerPulse.baseUnitMagnitude());
-    rightEncoder.setDistancePerPulse(config.driveRight.encoder.distancePerPulse.baseUnitMagnitude());
+    rightEncoder.setDistancePerPulse(
+        config.driveRight.encoder.distancePerPulse.baseUnitMagnitude());
 
-    driveLeft = new DriveGroup(
-      leftPrimary,
-      leftBackups,
-      leftEncoder,
-      new SlewRateLimiter(config.driveRateLimit)
-    );
-    driveRight = new DriveGroup(
-      rightPrimary,
-      rightBackups,
-      rightEncoder,
-      new SlewRateLimiter(config.driveRateLimit)
-    );
+    driveLeft =
+        new DriveGroup(
+            leftPrimary, leftBackups, leftEncoder, new SlewRateLimiter(config.driveRateLimit));
+    driveRight =
+        new DriveGroup(
+            rightPrimary, rightBackups, rightEncoder, new SlewRateLimiter(config.driveRateLimit));
   }
 
   private CANSparkMax createDriveBackup(CANSparkMax primary, int id) {
@@ -144,12 +123,13 @@ public class CompDrivetrain extends SubsystemBase implements Drivetrain {
 
   private void logOutputs() {
     networkTableEntries.controlMode.setString(
-      switch (driveControlMode) {
-        case DriveControlMode.Stop ignore -> "Stop";
-        case DriveControlMode.Tank tank -> String.format("Tank (%.2f, %.2f)", tank.left, tank.right);
-        case DriveControlMode.Arcade arcade -> String.format("Arcade (%.2f, %.2f)", arcade.move, arcade.turn);
-      }
-    );
+        switch (driveControlMode) {
+          case DriveControlMode.Stop ignore -> "Stop";
+          case DriveControlMode.Tank tank ->
+              String.format("Tank (%.2f, %.2f)", tank.left, tank.right);
+          case DriveControlMode.Arcade arcade ->
+              String.format("Arcade (%.2f, %.2f)", arcade.move, arcade.turn);
+        });
   }
 
   @Override

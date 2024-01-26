@@ -4,7 +4,9 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.WaitUntilCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.OperatorConstants;
@@ -12,6 +14,7 @@ import frc.robot.commands.DriveCommands;
 import frc.robot.config.Config;
 import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.comp.CompDrivetrain;
+import frc.robot.subsystems.comp.SimpleIntake2;
 import frc.robot.subsystems.mock.MockDrivetrain;
 
 /**
@@ -30,6 +33,7 @@ public class RobotContainer {
       NetworkTableInstance.getDefault().getTable("Drivetrain (Mock)")
     );
   };
+  private final SimpleIntake2 simpleIntake = new SimpleIntake2();
 
   private final CommandXboxController driverController =
     new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
@@ -63,6 +67,18 @@ public class RobotContainer {
     drivetrain.setDefaultCommand(
       DriveCommands.arcadeDrive(drivetrain, driverController::getLeftY, driverController::getRightX)
     );
+
+    simpleIntake.setDefaultCommand(
+      simpleIntake.run(() -> simpleIntake.setActuateSpeed(driverController.getRightY()))
+    );
+
+    driverController.b().onTrue(new ConditionalCommand(
+      simpleIntake.runOnce(() -> simpleIntake.setActuatePosition(SimpleIntake2.Position.Down, 1))
+        .andThen(new WaitUntilCommand(simpleIntake::atBottom)),
+      simpleIntake.runOnce(() -> simpleIntake.setActuatePosition(SimpleIntake2.Position.Down, 1))
+        .andThen(new WaitUntilCommand(simpleIntake::atTop)),
+      () -> simpleIntake.getPosition().orElse(SimpleIntake2.Position.Up) == SimpleIntake2.Position.Up
+    ));
   }
 
   /**

@@ -3,12 +3,15 @@ package frc.robot;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
-import frc.robot.Constants.OperatorConstants;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.DriveCommands;
+import frc.robot.config.Config;
+import frc.robot.subsystems.Drivetrain;
+import frc.robot.subsystems.comp.CompDrivetrain;
 import frc.robot.subsystems.mock.MockDrivetrain;
 
 /**
@@ -18,18 +21,26 @@ import frc.robot.subsystems.mock.MockDrivetrain;
  * subsystems, commands, and trigger mappings) should be declared here.
  */
 public class RobotContainer {
-  // The robot's subsystems and commands are defined here...
-  private final MockDrivetrain drivetrain = new MockDrivetrain(NetworkTableInstance.getDefault().getTable("Drivetrain"));
+  private final Drivetrain drivetrain = switch (Config.drivetrain) {
+    case Config.Drivetrain.Comp comp -> new CompDrivetrain(
+      comp.config(),
+      NetworkTableInstance.getDefault().getTable("Drivetrain (Competition)")
+    );
+    case Config.Drivetrain.Mock ignore -> new MockDrivetrain(
+      NetworkTableInstance.getDefault().getTable("Drivetrain (Mock)")
+    );
+  };
 
-  // Replace with CommandPS4Controller or CommandJoystick if needed
   private final CommandXboxController driverController =
-      new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
+    new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
 
-  enum Auto { Auto1, Auto2 }
+  enum Auto {Auto1, Auto2}
 
   private final SendableChooser<Auto> autoChooser = new SendableChooser<>();
 
-  /** The container for the robot. Contains subsystems, OI devices, and commands. */
+  /**
+   * The container for the robot. Contains subsystems, OI devices, and commands.
+   */
   public RobotContainer() {
     autoChooser.setDefaultOption("Auto 1", Auto.Auto1);
     autoChooser.addOption("Auto 2", Auto.Auto2);

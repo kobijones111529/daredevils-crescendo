@@ -8,10 +8,11 @@ import edu.wpi.first.units.Measure;
 import edu.wpi.first.units.Velocity;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.EncoderDifferentialDrive;
 import frc.robot.subsystems.SimpleDifferentialDrive;
 
-public class MockDrivetrain extends SubsystemBase implements SimpleDifferentialDrive, EncoderDifferentialDrive {
+public class MockDrivetrain extends SubsystemBase implements Drivetrain {
 
   private sealed interface DriveControlMode {
     record Stop() implements DriveControlMode {}

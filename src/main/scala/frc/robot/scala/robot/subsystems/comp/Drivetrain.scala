@@ -1,6 +1,8 @@
 package frc.robot.scala.robot.subsystems.comp
 
 import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX
+import com.revrobotics.CANSparkLowLevel.MotorType
+import com.revrobotics.CANSparkMax
 import edu.wpi.first.wpilibj.drive.DifferentialDrive
 import edu.wpi.first.wpilibj2.command.SubsystemBase
 import frc.robot.scala.robot.subsystems.SimpleDifferentialDrive
@@ -8,7 +10,8 @@ import frc.robot.scala.robot.subsystems.comp.Drivetrain.*
 
 class Drivetrain(config: Config) extends SubsystemBase:
   private class DriveGroup(
-      val primary: WPI_VictorSPX
+      val primary: CANSparkMax,
+      val backups: Array[CANSparkMax]
   )
 
   private object drive:
@@ -16,13 +19,18 @@ class Drivetrain(config: Config) extends SubsystemBase:
     val right: DriveGroup = create(config.right)
 
     private def create(config: Config.DriveGroup): DriveGroup =
-      val primary = WPI_VictorSPX(config.primaryID)
-      val backups = config.backupIDs.map(id => WPI_VictorSPX(id))
+      val primary = CANSparkMax(config.primaryID, MotorType.kBrushless)
+      val backups = config.backupIDs.map(id => createBackup(id)) 
 
       backups.foreach(backup => backup.follow(primary))
 
-      DriveGroup(primary)
+      DriveGroup(primary, backups)
       
+    private def createBackup(id: Int): CANSparkMax =
+      val motor = CANSparkMax(id, MotorType.kBrushless)
+      
+      motor
+
   end drive
 
   private var control: Control = Control.Stop

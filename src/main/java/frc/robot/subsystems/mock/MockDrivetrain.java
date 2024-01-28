@@ -11,128 +11,69 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.EncoderDifferentialDrive;
 import frc.robot.subsystems.SimpleDifferentialDrive;
+import frc.robot.subsystems.comp.drivetrain.capabilities.*;
+
+import java.util.Optional;
 
 public class MockDrivetrain extends SubsystemBase implements Drivetrain {
+  private final SimpleDrive simpleDrive = new SimpleDrive() {
+    @Override
+    public void stop() {
+      
+    }
 
-  private sealed interface DriveControlMode {
-    record Stop() implements DriveControlMode {}
+    @Override
+    public void tank(double left, double right) {
 
-    record TankDrive(double left, double right) implements DriveControlMode {}
+    }
 
-    record ArcadeDrive(double move, double turn) implements DriveControlMode {}
-  }
+    @Override
+    public void arcade(double move, double turn) {
 
-  private sealed interface DriveOutput {
-    record Stop() implements DriveOutput {}
-
-    record Percent(double left, double right) implements DriveOutput {}
-  }
-
-  private final NetworkTable controlNetworkTable;
-  private final NetworkTable outputNetworkTable;
-  private DriveControlMode driveControlMode = new DriveControlMode.Stop();
-
-  private final Measure<Distance> leftDistance = BaseUnits.Distance.zero();
-  private final Measure<Distance> rightDistance = BaseUnits.Distance.zero();
-  private final Measure<Velocity<Distance>> leftVelocity = BaseUnits.Velocity.zero();
-  private final Measure<Velocity<Distance>> rightVelocity = BaseUnits.Velocity.zero();
-
+    }
+  };
+  
   public MockDrivetrain(NetworkTable networkTable) {
-    controlNetworkTable = networkTable.getSubTable("Control");
-    outputNetworkTable = networkTable.getSubTable("Output");
+    
   }
 
   @Override
   public void periodic() {
-    logControlMode(driveControlMode);
-
-    var driveOutput = switch (driveControlMode) {
-      case DriveControlMode.Stop ignore -> new DriveOutput.Stop();
-      case DriveControlMode.TankDrive output -> {
-        var wheelSpeeds = DifferentialDrive.tankDriveIK(output.left, output.right, false);
-        yield new DriveOutput.Percent(wheelSpeeds.left, wheelSpeeds.right);
-      }
-      case DriveControlMode.ArcadeDrive output -> {
-        var wheelSpeeds = DifferentialDrive.arcadeDriveIK(output.move, output.turn, false);
-        yield new DriveOutput.Percent(wheelSpeeds.left, wheelSpeeds.right);
-      }
-    };
-
-    logDriveOutput(driveOutput);
-  }
-
-  private void logControlMode(DriveControlMode output) {
-    double left = 0;
-    double right = 0;
-    double move = 0;
-    double turn = 0;
-
-    switch (output) {
-      case DriveControlMode.Stop ignore -> {}
-      case DriveControlMode.TankDrive out -> {
-        left = out.left;
-        right = out.right;
-      }
-      case DriveControlMode.ArcadeDrive out -> {
-        move = out.move;
-        turn = out.turn;
-      }
-    }
-
-    controlNetworkTable.putValue("Left %", NetworkTableValue.makeDouble(left));
-    controlNetworkTable.putValue("Right %", NetworkTableValue.makeDouble(right));
-    controlNetworkTable.putValue("Move %", NetworkTableValue.makeDouble(move));
-    controlNetworkTable.putValue("Turn %", NetworkTableValue.makeDouble(turn));
-  }
-
-  private void logDriveOutput(DriveOutput output) {
-    double left = 0;
-    double right = 0;
-
-    switch (output) {
-      case DriveOutput.Stop ignore -> {}
-      case DriveOutput.Percent out -> {
-        left = out.left;
-        right = out.right;
-      }
-    }
-
-    outputNetworkTable.putValue("Left %", NetworkTableValue.makeDouble(left));
-    outputNetworkTable.putValue("Right %", NetworkTableValue.makeDouble(right));
+    
   }
 
   @Override
-  public void stop() {
-    driveControlMode = new DriveControlMode.Stop();
+  public SimpleDrive getSimpleDrive() {
+    return simpleDrive;
   }
 
   @Override
-  public void tankDrive(double left, double right) {
-    driveControlMode = new DriveControlMode.TankDrive(left, right);
+  public Optional<VelocityDrive> getVelocityDrive() {
+    return Optional.empty();
   }
 
   @Override
-  public void arcadeDrive(double move, double turn) {
-    driveControlMode = new DriveControlMode.ArcadeDrive(move, turn);
+  public Optional<EncoderDistance> getEncoderDistance() {
+    return Optional.empty();
   }
 
   @Override
-  public Measure<Distance> getLeftDistance() {
-    return leftDistance;
+  public Optional<EncoderVelocity> getEncoderVelocity() {
+    return Optional.empty();
   }
 
   @Override
-  public Measure<Distance> getRightDistance() {
-    return rightDistance;
+  public Optional<Gyro> getGyro() {
+    return Optional.empty();
   }
 
   @Override
-  public Measure<Velocity<Distance>> getLeftVelocity() {
-    return leftVelocity;
+  public Optional<Odometry> getOdometry() {
+    return Optional.empty();
   }
 
   @Override
-  public Measure<Velocity<Distance>> getRightVelocity() {
-    return rightVelocity;
+  public Optional<Kinematics> getKinematics() {
+    return Optional.empty();
   }
 }

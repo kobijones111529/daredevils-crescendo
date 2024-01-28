@@ -1,7 +1,9 @@
 package frc.robot.config;
 
 import edu.wpi.first.units.Units;
-import frc.robot.subsystems.comp.CompDrivetrain;
+import frc.robot.subsystems.comp.drivetrain.CompetitionDrivetrain;
+
+import java.util.Optional;
 
 public class Config {
   public static final class Subsystems {
@@ -16,35 +18,34 @@ public class Config {
 
   public sealed interface Drivetrain {
     record Mock() implements Drivetrain {}
-    record Comp(CompDrivetrain.Config config) implements Drivetrain {}
+
+    record Comp(CompetitionDrivetrain.Config config) implements Drivetrain {}
   }
 
   public static final Drivetrain drivetrain = switch (Subsystems.drivetrain) {
     case Comp -> {
-      CompDrivetrain.Config config = new CompDrivetrain.Config(
-        1,
-        new CompDrivetrain.Config.DriveGroup(
+      CompetitionDrivetrain.Config config = new CompetitionDrivetrain.Config(
+        new CompetitionDrivetrain.Config.DriveGroup(
           false,
           CAN.Drivetrain.driveLeftPrimary,
           CAN.Drivetrain.driveLeftBackups,
-          new CompDrivetrain.Config.DriveGroup.Encoder(
-            DIO.Drivetrain.leftEncoderChannelA,
-            DIO.Drivetrain.leftEncoderChannelB,
-            false,
-            Units.Inches.one()
-          )
+          Optional.of(
+            new CompetitionDrivetrain.Config.DriveGroup.Encoder(Units.Inches.of(6))
+          ),
+          Optional.empty()
         ),
-        new CompDrivetrain.Config.DriveGroup(
+        new CompetitionDrivetrain.Config.DriveGroup(
           false,
           CAN.Drivetrain.driveRightPrimary,
           CAN.Drivetrain.driveRightBackups,
-          new CompDrivetrain.Config.DriveGroup.Encoder(
-            DIO.Drivetrain.rightEncoderChannelA,
-            DIO.Drivetrain.rightEncoderChannelB,
-            false,
-            Units.Inches.one()
-          )
-        )
+          Optional.of(
+            new CompetitionDrivetrain.Config.DriveGroup.Encoder(Units.Inches.of(6))
+          ),
+          Optional.empty()
+        ),
+        3,
+        new CompetitionDrivetrain.Config.Gyro(CAN.Drivetrain.pigeon),
+        Optional.empty()
       );
       yield new Drivetrain.Comp(config);
     }

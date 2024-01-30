@@ -44,7 +44,7 @@ public class Config {
           Optional.empty()
         ),
         3,
-        new CompetitionDrivetrain.Config.Gyro(CAN.Drivetrain.pigeon),
+        Optional.empty(),
         Optional.empty()
       );
       yield new Drivetrain.Comp(config);

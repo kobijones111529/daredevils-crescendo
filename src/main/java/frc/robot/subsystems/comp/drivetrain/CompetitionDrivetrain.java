@@ -29,7 +29,7 @@ public class CompetitionDrivetrain extends SubsystemBase implements Drivetrain {
     DriveGroup driveLeft,
     DriveGroup driveRight,
     double driveRateLimit,
-    Gyro gyro,
+    Optional<Gyro> gyro,
     Optional<Measure<Distance>> trackWidth
   ) {
     public record DriveGroup(
@@ -74,7 +74,7 @@ public class CompetitionDrivetrain extends SubsystemBase implements Drivetrain {
   private final DriveGroup driveLeft;
   private final DriveGroup driveRight;
 
-  private final Pigeon2 pigeon;
+  private final Optional<Pigeon2> pigeon;
 
   private final Optional<DifferentialDriveOdometry> differentialOdometry;
   private final Optional<DifferentialDriveKinematics> differentialKinematics;
@@ -138,7 +138,7 @@ public class CompetitionDrivetrain extends SubsystemBase implements Drivetrain {
     driveLeft = new DriveGroup(leftPrimary, leftBackups, new SlewRateLimiter(config.driveRateLimit));
     driveRight = new DriveGroup(rightPrimary, rightBackups, new SlewRateLimiter(config.driveRateLimit));
 
-    pigeon = new Pigeon2(config.gyro.id);
+    pigeon = config.gyro.map(gyro -> new Pigeon2(gyro.id));
 
     velocityDrive = config.driveLeft.feedforward.flatMap(leftFeedforward ->
       config.driveRight.feedforward.map(rightFeedforward ->
@@ -191,17 +191,19 @@ public class CompetitionDrivetrain extends SubsystemBase implements Drivetrain {
       )
     );
 
-    gyro = Optional.of(new Gyro() {
-      @Override
-      public Measure<Angle> getAngle() {
-        return Units.Degrees.of(pigeon.getAngle());
-      }
+    gyro = pigeon.map(pigeon ->
+      new Gyro() {
+        @Override
+        public Measure<Angle> getAngle() {
+          return Units.Degrees.of(pigeon.getAngle());
+        }
 
-      @Override
-      public Rotation2d getRotation2d() {
-        return pigeon.getRotation2d();
+        @Override
+        public Rotation2d getRotation2d() {
+          return pigeon.getRotation2d();
+        }
       }
-    });
+    );
 
     differentialOdometry = encoderDistance.flatMap(encoderDistance -> gyro.map(gyro -> new DifferentialDriveOdometry(
       gyro.getRotation2d(),
